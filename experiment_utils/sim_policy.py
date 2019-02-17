@@ -1,3 +1,4 @@
+import os
 import joblib
 import tensorflow as tf
 import argparse
@@ -7,7 +8,6 @@ from maml_zoo.samplers.utils import rollout
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("param", type=str)
     parser.add_argument('--max_path_length', type=int, default=1000,
                         help='Max length of rollout')
     parser.add_argument('--speedup', type=float, default=1,
@@ -24,13 +24,24 @@ if __name__ == "__main__":
     # import tensorflow as tf
     # with tf.Session():
     #     [rest of the code]
-    with tf.Session() as sess:
-        pkl_path = args.param
-        print("Testing policy %s" % pkl_path)
-        data = joblib.load(pkl_path)
-        policy = data['policy']
-        policy._pre_update_mode = True
-        policy.meta_batch_size = 1
-        env = data['env']
-        path = rollout(env, policy, max_path_length=args.max_path_length, animated=True, speedup=args.speedup,
-                       video_filename=args.video_filename, save_video=False, ignore_done=args.ignore_done)
+    paths = []
+    d = '../pearl-baselines'
+    for r, d, files in os.walk(d):
+        for f in files:
+            if 'pkl' in f:
+                paths.append(os.path.join(r, f))
+
+    for p in paths:
+        with tf.Session() as sess:
+            pkl_path = p
+            #video_filename = p.split('/')[-1] + '.mp4'
+            video_filename = 'foo.mp4'
+            print("Testing policy %s" % pkl_path)
+            data = joblib.load(pkl_path)
+            policy = data['policy']
+            policy._pre_update_mode = True
+            #policy.meta_batch_size = 1
+            env = data['env']
+            path = rollout(env, policy, max_path_length=args.max_path_length, animated=True, speedup=args.speedup,
+                           video_filename=args.video_filename, save_video=True, ignore_done=args.ignore_done)
+        break
