@@ -99,10 +99,14 @@ class ProMP(MAMLAlgo):
 
             distribution_info_vars, current_policy_params = [], []
             all_surr_objs, all_inner_kls = [], []
+            # E-MAML: save pre-update policy info for use in the meta-loss
+            pre_adapt_policy_info = []
 
         for i in range(self.meta_batch_size):
             dist_info_sym = self.policy.distribution_info_sym(obs_phs[i], params=None)
             distribution_info_vars.append(dist_info_sym)  # step 0
+            # E-MAML
+            pre_adapt_policy_info.append(dist_info_sym)
             current_policy_params.append(self.policy.policy_params) # set to real policy_params (tf.Variable)
 
         with tf.variable_scope(self.name):
@@ -159,6 +163,9 @@ class ProMP(MAMLAlgo):
                                                           1 + clip_eps_ph) * adv_phs[i])
                 surr_obj = - tf.reduce_mean(clipped_obj)
 
+                # E-MAML: add adaptation returns weighted by logprob of *pre-update* policy
+                pre_adapt_actions = self.meta_op_phs_dict['{}_task{}_{}'.format('step0', i, 'actions')]
+                surr_obj -= self.policy.distribution.log_likelihood_sym(pre_adapt_actions, pre_adapt_policy_info[i]) * adv_phs[i]
 
                 surr_objs.append(surr_obj)
                 outer_kls.append(outer_kl)
