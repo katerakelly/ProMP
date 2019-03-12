@@ -35,6 +35,7 @@ class ProMP(MAMLAlgo):
             num_ppo_steps=5,
             num_minibatches=1,
             clip_eps=0.2,
+            inner_type='likelihood_ratio',
             target_inner_step=0.01,
             init_inner_kl_penalty=1e-2,
             adaptive_inner_kl_penalty=True,
@@ -43,6 +44,8 @@ class ProMP(MAMLAlgo):
             ):
         super(ProMP, self).__init__(*args, **kwargs)
 
+        assert inner_type in ["log_likelihood", "likelihood_ratio", "dice"]
+        self.inner_type = inner_type
         self.optimizer = MAMLPPOOptimizer(learning_rate=learning_rate, max_epochs=num_ppo_steps, num_minibatches=num_minibatches)
         self.clip_eps = clip_eps
         self.target_inner_step = target_inner_step
@@ -57,11 +60,23 @@ class ProMP(MAMLAlgo):
         self.build_graph()
 
     def _adapt_objective_sym(self, action_sym, adv_sym, dist_info_old_sym, dist_info_new_sym):
-        with tf.variable_scope("likelihood_ratio"):
-            likelihood_ratio_adapt = self.policy.distribution.likelihood_ratio_sym(action_sym,
-                                                                                   dist_info_old_sym, dist_info_new_sym)
-        with tf.variable_scope("surrogate_loss"):
-            surr_obj_adapt = -tf.reduce_mean(likelihood_ratio_adapt * adv_sym)
+        if self.inner_type == 'likelihood_ratio':
+            with tf.variable_scope("likelihood_ratio"):
+                likelihood_ratio_adapt = self.policy.distribution.likelihood_ratio_sym(action_sym,
+                                                                                       dist_info_old_sym,
+                                                                                       dist_info_new_sym)
+            with tf.variable_scope("surrogate_loss"):
+                surr_obj_adapt = -tf.reduce_mean(likelihood_ratio_adapt * adv_sym)
+
+        elif self.inner_type == 'log_likelihood':
+            with tf.variable_scope("log_likelihood"):
+                log_likelihood_adapt = self.policy.distribution.log_likelihood_sym(action_sym, dist_info_new_sym)
+            with tf.variable_scope("surrogate_loss"):
+                surr_obj_adapt = -tf.reduce_mean(log_likelihood_adapt * adv_sym)
+
+        else:
+            raise NotImplementedError
+
         return surr_obj_adapt
 
     def build_graph(self):

@@ -59,6 +59,7 @@ def main(config):
         learning_rate=config['learning_rate'],
         num_ppo_steps=config['num_promp_steps'],
         clip_eps=config['clip_eps'],
+        inner_type=config['inner_type'],
         target_inner_step=config['target_inner_step'],
         init_inner_kl_penalty=config['init_inner_kl_penalty'],
         adaptive_inner_kl_penalty=config['adaptive_inner_kl_penalty'],
@@ -101,7 +102,7 @@ if __name__=="__main__":
 
             # sampler config
             'rollouts_per_meta_task': 20,
-            'max_path_length': 100,
+            'max_path_length': 200,
             'parallel': True,
 
             # sample processor config
@@ -118,6 +119,7 @@ if __name__=="__main__":
             'learning_rate': 1e-3, # meta-policy gradient step size
             'num_promp_steps': 5, # number of ProMp steps without re-sampling
             'clip_eps': 0.3, # clipping range
+            'inner_type': 'log_likelihood',
             'target_inner_step': 0.01,
             'init_inner_kl_penalty': 5e-4,
             'adaptive_inner_kl_penalty': False, # whether to use an adaptive or fixed KL-penalty coefficient
