@@ -1,4 +1,5 @@
 import os
+import json
 import joblib
 import tensorflow as tf
 import argparse
@@ -25,23 +26,25 @@ if __name__ == "__main__":
     # with tf.Session():
     #     [rest of the code]
     paths = []
+    jsons = []
     d = '../pearl-baselines'
     for r, d, files in os.walk(d):
         for f in files:
             if 'pkl' in f:
                 paths.append(os.path.join(r, f))
+            elif 'json' in f:
+                jsons.append(os.path.join(r, f))
 
-    for p in paths:
+    for p, j in zip(paths, jsons):
         with tf.Session() as sess:
-            pkl_path = p
-            #video_filename = p.split('/')[-1] + '.mp4'
-            video_filename = 'foo.mp4'
-            print("Testing policy %s" % pkl_path)
-            data = joblib.load(pkl_path)
-            policy = data['policy']
-            policy._pre_update_mode = True
-            #policy.meta_batch_size = 1
-            env = data['env']
-            path = rollout(env, policy, max_path_length=args.max_path_length, animated=True, speedup=args.speedup,
-                           video_filename=args.video_filename, save_video=True, ignore_done=args.ignore_done)
-        break
+            js = json.load(open(j))
+            if 'Cheetah' in js['env']['$class']:
+                pkl_path = p
+                video_filename = p.split('/')[-1] + '.mp4'
+                print("Testing policy %s" % pkl_path)
+                data = joblib.load(pkl_path)
+                policy = data['policy']
+                policy._pre_update_mode = True
+                env = data['env']
+                path = rollout(env, policy, max_path_length=args.max_path_length, animated=True, speedup=args.speedup,
+                            video_filename=video_filename, save_video=True, ignore_done=args.ignore_done)

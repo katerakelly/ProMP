@@ -91,8 +91,6 @@ class MetaGaussianMLPPolicy(GaussianMLPPolicy, MetaPolicy):
         Returns:
             (ndarray) : single action - shape: (action_dim,)
         """
-        import pdb
-        pdb.set_trace()
         observation = np.repeat(np.expand_dims(np.expand_dims(observation, axis=0), axis=0), self.meta_batch_size, axis=0)
         action, agent_infos = self.get_actions(observation)
         action, agent_infos = action[task][0], dict(mean=agent_infos[task][0]['mean'], log_std=agent_infos[task][0]['log_std'])
@@ -123,8 +121,6 @@ class MetaGaussianMLPPolicy(GaussianMLPPolicy, MetaPolicy):
             observations (list): List of numpy arrays of shape (meta_batch_size, batch_size, obs_dim)
 
         """
-        import pdb
-        pdb.set_trace()
         batch_size = observations[0].shape[0]
         assert all([obs.shape[0] == batch_size for obs in observations])
         assert len(observations) == self.meta_batch_size

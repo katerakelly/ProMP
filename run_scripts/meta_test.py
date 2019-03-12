@@ -17,7 +17,7 @@ import joblib
 import os.path as osp
 
 INSTANCE_TYPE = 'c4.4xlarge'
-EXP_NAME = 'ppo-humanoid-large-batch'
+EXP_NAME = 'test'
 
 
 def run_experiment(**kwargs):
@@ -48,7 +48,7 @@ def run_experiment(**kwargs):
             policy=policy,
             rollouts_per_meta_task=rollouts_per_meta_task,
             meta_batch_size=config['meta_batch_size'],
-            max_path_length=kwargs['max_path_length'],
+            max_path_length=config['max_path_length'],
             parallel=kwargs['parallel'],
         )
 
@@ -80,18 +80,19 @@ def run_experiment(**kwargs):
 if __name__ == '__main__':
 
     sweep_params = {
-        'seed': [1, 2, 3],
-        'path': ['/home/ignasi/GitRepos/ProMP/data/s3/dice-eval-2/dice-eval-2-1542681462667'],
+        'seed': 1,
+        'path': '../pearl-baselines/def-def-def-promp-kate-deidre/def-def-def-promp-kate-deidre-1548182337856/',
 
-        'rollouts_per_meta_task': [None],
-        'max_path_length': [200],
-        'parallel': [False],
+        'rollouts_per_meta_task': None,
+        'parallel': False,
 
-        'n_itr': [1001],
-        'meta_batch_size': [40],
-        'scope': [None],
+        'n_itr': 1001,
+        'meta_batch_size': 40,
+        'scope': None,
 
-        'exp_tag': ['v0']
+        'exp_tag': 'v0',
     }
 
-    run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)
+    run_experiment(**sweep_params)
+
+    # run_sweep(run_experiment, sweep_params, EXP_NAME, INSTANCE_TYPE)

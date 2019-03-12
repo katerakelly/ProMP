@@ -22,14 +22,10 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
     o = env.reset()
     agent.reset()
     path_length = 0
-    if animated:
-        env.sim.render(64, 64)
 
     while path_length < max_path_length:
         a, agent_info = agent.get_action(o)
         next_o, r, d, env_info = env.step(a)
-        import pdb
-        pdb.set_trace()
         observations.append(o)
         #observations.append(env.observation_space.flatten(o))
         rewards.append(r)
@@ -42,14 +38,13 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1, save_
             break
         o = next_o
         if animated:
-            env.sim.render(64, 64)
             time.sleep(timestep*frame_skip / speedup)
             if save_video:
                 from PIL import Image
-                pdb.set_trace()
-                image = env._get_viewer('rgb_array').get_image()
-                pil_image = Image.frombytes('RGB', (image[1], image[2]), image[0])
-                images.append(np.flipud(np.array(pil_image)))
+                image = env.render('rgb_array', 256, 256)
+                #pil_image = Image.frombytes('RGB', (image[1], image[2]), image[0])
+                #images.append(np.flipud(image))
+                images.append(image)
 
     if animated:
         if save_video:
