@@ -53,7 +53,7 @@ class ProMP(MAMLAlgo):
         self.inner_kl_coeff = init_inner_kl_penalty * np.ones(self.num_inner_grad_steps)
         self.anneal_coeff = 1
         self.anneal_factor = anneal_factor
-        self._optimization_keys = ['observations', 'actions', 'advantages', 'agent_infos']
+        self._optimization_keys = ['observations', 'actions', 'advantages', 'agent_infos', 'adj_avg_rewards']
         self.name = name
         self.kl_coeff = [init_inner_kl_penalty] * self.meta_batch_size * self.num_inner_grad_steps
 
@@ -99,15 +99,14 @@ class ProMP(MAMLAlgo):
 
             distribution_info_vars, current_policy_params = [], []
             all_surr_objs, all_inner_kls = [], []
-            # E-MAML: save pre-update policy info for use in the meta-loss
-            pre_adapt_policy_info = []
 
         for i in range(self.meta_batch_size):
             dist_info_sym = self.policy.distribution_info_sym(obs_phs[i], params=None)
             distribution_info_vars.append(dist_info_sym)  # step 0
-            # E-MAML
-            pre_adapt_policy_info.append(dist_info_sym)
             current_policy_params.append(self.policy.policy_params) # set to real policy_params (tf.Variable)
+        # E-MAML: save pre-adapted policy info and actions for loss
+        pre_adapt_policy_info = distribution_info_vars
+        pre_adapt_actions = action_phs
 
         with tf.variable_scope(self.name):
             """ Inner updates"""
@@ -163,9 +162,10 @@ class ProMP(MAMLAlgo):
                                                           1 + clip_eps_ph) * adv_phs[i])
                 surr_obj = - tf.reduce_mean(clipped_obj)
 
-                # E-MAML: add adaptation returns weighted by logprob of *pre-update* policy
-                pre_adapt_actions = self.meta_op_phs_dict['{}_task{}_{}'.format('step0', i, 'actions')]
-                surr_obj -= self.policy.distribution.log_likelihood_sym(pre_adapt_actions, pre_adapt_policy_info[i]) * adv_phs[i]
+                # E-MAML: add adjusted average rewards weighted by logprob of *pre-update* policy
+                adj_avg_rewards = tf.placeholder(dtype=tf.float32, shape=[None], name='adj_avg_rewards' + '_' + str(self.num_inner_grad_steps) + '_' + str(i))
+                self.meta_op_phs_dict['step%i_task%i_%s' % (self.num_inner_grad_steps, i, 'adj_avg_rewards')] = adj_avg_rewards
+                surr_obj -= tf.reduce_mean(self.policy.distribution.log_likelihood_sym(pre_adapt_actions[i], pre_adapt_policy_info[i])) * tf.reduce_mean(adj_avg_rewards)
 
                 surr_objs.append(surr_obj)
                 outer_kls.append(outer_kl)
