@@ -1,12 +1,12 @@
 {
   "algo": "RL2",
-  "meta_batch_size": 200,
+  "meta_batch_size": 80,
   "hidden_sizes": [
     64
   ],
   "rollouts_per_meta_task": 2,
-  "parallel": true,
-  "max_path_length":100,
+  "parallel": false,
+  "max_path_length":25,
   "discount": 0.99,
   "gae_lambda": 1.0,
   "normalize_adv": true,

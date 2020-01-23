@@ -1,0 +1,36 @@
+<mujoco>
+
+    <compiler meshdir="meshes" texturedir="textures"/>
+    <include file="include/assets.xml"/>
+    <include file="include/actuators.xml"/>
+    <option timestep='0.0025'/>
+
+    <worldbody>
+
+        <!-- cameras track was -1 0 1.4(single), -1.5 0 2(double) -->
+        <camera name="track" pos="-1 0 1.4" mode="fixed" euler="0.85 -0 -1.571"/>
+	    <camera name="track_aux_reach" pos="0.5 -2.7 0.4" mode="fixed" euler="1.5 0 0"/>
+
+        <camera name="track_front" pos="0.55 0 1.2" />
+        <camera name="track_high" pos="0.5 -0.5 1" mode="fixed" euler="0.4 0 0"/>
+        <camera name="topview" pos="0 0 3.2" />
+
+        <!-- lighting of the scene -->
+        <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+
+        <!-- robot -->
+        <body name="sawyer">
+            <include file="include/sawyer_chain.xml"/>
+        </body>
+
+        <!-- goal site 0.7-0.8, -0.5-0.5, 0.1-0.6 -->
+        <site name="goal_reach_site" pos="0.6 0.5 0.6" size="0.01" rgba="1 0 0 0"/>
+
+    </worldbody>
+
+    <!-- define a good reset position in joint angles -->
+    <keyframe>
+        <key qpos='-0.305 -0.83 0.06086 1.70464 -0.02976 0.62496 -0.04712'/>
+    </keyframe>
+
+</mujoco>
