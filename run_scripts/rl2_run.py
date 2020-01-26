@@ -18,14 +18,21 @@ maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[
 def main(config):
     baseline = LinearFeatureBaseline()
     env = rl2env(SawyerReachingEnvMultitask())
+    # obs is state, action, reward, and done
     obs_dim = np.prod(env.observation_space.shape) + np.prod(env.action_space.shape) + 1 + 1
+    print('SCRIPT: obs dim', obs_dim)
+    vision_args = None
+    if config['obs_mode'] == 'image':
+        vision_args = dict(base_depth=32, double_camera=config['double_camera'])
+
     policy = GaussianRNNPolicy(
             name="meta-policy",
             obs_dim=obs_dim,
             action_dim=np.prod(env.action_space.shape),
             meta_batch_size=config['meta_batch_size'],
             hidden_sizes=config['hidden_sizes'],
-            cell_type=config['cell_type']
+            cell_type=config['cell_type'],
+            vision_args=vision_args
         )
 
     sampler = MAMLSampler(

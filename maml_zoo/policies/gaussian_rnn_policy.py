@@ -8,6 +8,7 @@ from maml_zoo.logger import logger
 import tensorflow as tf
 import numpy as np
 from collections import OrderedDict
+import sys
 
 
 class GaussianRNNPolicy(Policy):
@@ -29,7 +30,7 @@ class GaussianRNNPolicy(Policy):
 
     """
 
-    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='gru', **kwargs):
+    def __init__(self, *args, init_std=1., min_std=1e-6, cell_type='gru', vision_args, **kwargs):
         # store the init args for serialization and call the super constructors
         Serializable.quick_init(self, locals())
         Policy.__init__(self, *args, **kwargs)
@@ -47,6 +48,7 @@ class GaussianRNNPolicy(Policy):
         self._hidden_state = None
         self.recurrent = True
         self._cell_type = cell_type
+        self.vision_args = vision_args # if None, will not use cnn encoder
 
         self.build_graph()
         self._zero_hidden = self.cell.zero_state(1, tf.float32)
@@ -58,14 +60,14 @@ class GaussianRNNPolicy(Policy):
         with tf.variable_scope(self.name):
             # build the actual policy network
             rnn_outs = create_rnn(name='mean_network',
-                                  cell_type=self._cell_type,
-                                  output_dim=self.action_dim,
-                                  hidden_sizes=self.hidden_sizes,
-                                  hidden_nonlinearity=self.hidden_nonlinearity,
-                                  output_nonlinearity=self.output_nonlinearity,
-                                  input_dim=(None, None, self.obs_dim,),
-                                  )
-
+                                cell_type=self._cell_type,
+                                output_dim=self.action_dim,
+                                hidden_sizes=self.hidden_sizes,
+                                hidden_nonlinearity=self.hidden_nonlinearity,
+                                output_nonlinearity=self.output_nonlinearity,
+                                input_dim=(None, None, self.obs_dim,),
+                                cnn_args=self.vision_args,
+                                )
             self.obs_var, self.hidden_var, self.mean_var, self.next_hidden_var, self.cell = rnn_outs
 
             with tf.variable_scope("log_std_network"):
@@ -179,6 +181,7 @@ class GaussianRNNPolicy(Policy):
                                   output_nonlinearity=self.output_nonlinearity,
                                   input_var=obs_var,
                                   cell_type=self._cell_type,
+                                  cnn_args=self.vision_args,
                                   )
             obs_var, hidden_var, mean_var, next_hidden_var, cell = rnn_outs
             log_std_var = self.log_std_var
