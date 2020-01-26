@@ -317,3 +317,12 @@ class SawyerReachingEnvMultitask(SawyerReachingEnv):
 
     ##########################################
     ##########################################
+
+
+class SawyerReachingEnvMultitaskVision(SawyerReachingEnvMultitask):
+    '''
+    stub class to control observation mode
+    envs cannot take args due to vectorization
+    '''
+    def __init__(self, *args, **kwargs):
+        super(SawyerReachingEnvMultitaskVision, self).__init__(*args, obs_mode='image', **kwargs)

@@ -1,5 +1,5 @@
 from maml_zoo.baselines.linear_baseline import LinearFeatureBaseline
-from maml_zoo.envs.sawyer_envs.reacher.sawyer_reacher import SawyerReachingEnvMultitask
+from maml_zoo.envs.sawyer_envs.reacher.sawyer_reacher import SawyerReachingEnvMultitask, SawyerReachingEnvMultitaskVision
 from maml_zoo.envs.rl2_env import rl2env
 from maml_zoo.algos.vpg import VPG
 from maml_zoo.algos.ppo import PPO
@@ -17,7 +17,10 @@ maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[
 
 def main(config):
     baseline = LinearFeatureBaseline()
-    env = rl2env(SawyerReachingEnvMultitask())
+    if config['obs_mode'] == 'image':
+        env = rl2env(SawyerReachingEnvMultitaskVision())
+    else:
+        env = rl2env(SawyerReachingEnvMultitask())
     # obs is state, action, reward, and done
     obs_dim = np.prod(env.observation_space.shape) + np.prod(env.action_space.shape) + 1 + 1
     print('SCRIPT: obs dim', obs_dim)
