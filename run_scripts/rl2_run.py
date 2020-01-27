@@ -1,3 +1,8 @@
+import os
+import click
+import json
+import numpy as np
+
 from maml_zoo.baselines.linear_baseline import LinearFeatureBaseline
 from maml_zoo.envs.sawyer_envs.reacher.sawyer_reacher import SawyerReachingEnvMultitask, SawyerReachingEnvMultitaskVision
 from maml_zoo.envs.rl2_env import rl2env
@@ -8,14 +13,10 @@ from maml_zoo.samplers.maml_sampler import MAMLSampler
 from maml_zoo.samplers.rl2_sample_processor import RL2SampleProcessor
 from maml_zoo.policies.meta_gaussian_mlp_policy import MetaGaussianMLPPolicy
 from maml_zoo.policies.gaussian_rnn_policy import GaussianRNNPolicy
-import os
 from maml_zoo.logger import logger
-import json
-import numpy as np
-
 maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[:-1])
 
-def main(config):
+def run_experiment(config):
     baseline = LinearFeatureBaseline()
     if config['obs_mode'] == 'image':
         env = rl2env(SawyerReachingEnvMultitaskVision())
@@ -72,12 +73,21 @@ def main(config):
     )
     trainer.train()
 
-
-if __name__=="__main__":
+@click.command()
+@click.argument('config', default='rl2_config.json')
+@click.option('--log_dir', default='./data/rl2')
+@click.option('--debug', is_flag=True, default=False)
+def main(config, log_dir, debug):
     idx = np.random.randint(0, 1000)
-    data_path = maml_zoo_path + '/data/rl2/test_%d' % idx
+    if debug:
+        data_path = maml_zoo_path + '{}/debug'.format(log_dir)
+    else:
+        data_path = maml_zoo_path + '{}/test_{}'.format(log_dir, idx)
     logger.configure(dir=data_path, format_strs=['stdout', 'log', 'csv'],
                      snapshot_mode='last_gap')
-    config = json.load(open(maml_zoo_path + "/configs/rl2_config.json", 'r'))
+    config = json.load(open(maml_zoo_path + "/configs/{}".format(config), 'r'))
     json.dump(config, open(data_path + '/params.json', 'w'))
-    main(config)
+    run_experiment(config)
+
+if __name__=="__main__":
+    main()
