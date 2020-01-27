@@ -38,7 +38,7 @@ class PPO(Algo):
             self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
         else:
             self.optimizer = MAMLFirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
-        self._optimization_keys = ['observations', 'actions', 'advantages', 'agent_infos']
+        self._optimization_keys = ['observations', 'actions', 'advantages', 'baseline_targets', 'agent_infos']
         self.name = name
         self._clip_eps = clip_eps
 
@@ -64,13 +64,13 @@ class PPO(Algo):
 
         """ ----- Build graph for the meta-update ----- """
         self.meta_op_phs_dict = OrderedDict()
-        obs_ph, action_ph, adv_ph, dist_info_old_ph, all_phs_dict = self._make_input_placeholders('train',
+        obs_ph, action_ph, adv_ph, baseline_target_ph, dist_info_old_ph, all_phs_dict = self._make_input_placeholders('train',
                                                                                                   recurrent=self.recurrent)
         self.meta_op_phs_dict.update(all_phs_dict)
 
         # dist_info_vars_for_next_step
         if self.recurrent:
-            distribution_info_vars, hidden_ph, next_hidden_var = self.policy.distribution_info_sym(obs_ph)
+            distribution_info_vars, baseline_pred_ph, hidden_ph, next_hidden_var = self.policy.distribution_info_sym(obs_ph)
         else:
             distribution_info_vars = self.policy.distribution_info_sym(obs_ph)
             hidden_ph, next_hidden_var = None, None
@@ -85,9 +85,14 @@ class PPO(Algo):
                                                   1 - self._clip_eps,
                                                   1 + self._clip_eps ) * adv_ph)
         surr_obj = - tf.reduce_mean(clipped_obj)
+        # KATE add loss for baseline training
+        print('baseline pred shape', self.policy.baseline_var.shape)
+        print('baseline target shape', baseline_target_ph.shape)
+        baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph)
+        total_obj = surr_obj + baseline_obj
 
         self.optimizer.build_graph(
-            loss=surr_obj,
+            loss=total_obj,
             target=self.policy,
             input_ph_dict=self.meta_op_phs_dict,
             hidden_ph=hidden_ph,

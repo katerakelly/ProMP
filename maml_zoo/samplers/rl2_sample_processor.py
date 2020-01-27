@@ -36,7 +36,7 @@ class RL2SampleProcessor(SampleProcessor):
             samples_data_meta_batch.append(samples_data)
             all_paths.extend(paths)
 
-        observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = \
+        observations, actions, rewards, dones, returns, baseline_targets, advantages, env_infos, agent_infos = \
             self._stack_path_data(samples_data_meta_batch)
 
         overall_avg_reward = np.mean(np.concatenate([samples_data['rewards'] for samples_data in samples_data_meta_batch]))
@@ -54,6 +54,7 @@ class RL2SampleProcessor(SampleProcessor):
             rewards=rewards,
             dones=dones,
             returns=returns,
+            baseline_targets=baseline_targets,
             advantages=advantages,
             env_infos=env_infos,
             agent_infos=agent_infos,

@@ -17,7 +17,7 @@ from maml_zoo.logger import logger
 maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[:-1])
 
 def run_experiment(config):
-    baseline = LinearFeatureBaseline()
+    baseline = LinearFeatureBaseline() # KATE note this is no longer used!
     if config['obs_mode'] == 'image':
         env = rl2env(SawyerReachingEnvMultitaskVision())
     else:

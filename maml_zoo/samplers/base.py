@@ -26,7 +26,7 @@ class Sampler(object):
         """
         Collect batch_size trajectories
 
-        Returns: 
+        Returns:
             (list) : A list of paths.
         """
         raise NotImplementedError
@@ -58,7 +58,7 @@ class SampleProcessor(object):
         assert 0 <= discount <= 1.0, 'discount factor must be in [0,1]'
         assert 0 <= gae_lambda <= 1.0, 'gae_lambda must be in [0,1]'
         assert hasattr(baseline, 'fit') and hasattr(baseline, 'predict')
-        
+
         self.baseline = baseline
         self.discount = discount
         self.gae_lambda = gae_lambda
@@ -105,14 +105,17 @@ class SampleProcessor(object):
             path["returns"] = utils.discount_cumsum(path["rewards"], self.discount)
 
         # 2) fit baseline estimator using the path returns and predict the return baselines
-        self.baseline.fit(paths, target_key="returns")
-        all_path_baselines = [self.baseline.predict(path) for path in paths]
+        # KATE already have baseline preds from baseline network
+        #all_path_baselines = [self.baseline.predict(path) for path in paths]
+        # instead, compute targets for baseline optimization
+        baseline_targets = self._compute_baseline_targets(paths)
 
         # 3) compute advantages and adjusted rewards
+        all_path_baselines = [path['baseline_values'] for path in paths]
         paths = self._compute_advantages(paths, all_path_baselines)
 
         # 4) stack path data
-        observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos = self._concatenate_path_data(paths)
+        observations, actions, rewards, dones, returns, baseline_targets, advantages, env_infos, agent_infos = self._concatenate_path_data(paths)
 
         # 5) if desired normalize / shift advantages
         if self.normalize_adv:
@@ -127,6 +130,7 @@ class SampleProcessor(object):
             rewards=rewards,
             dones=dones,
             returns=returns,
+            baseline_targets=baseline_targets,
             advantages=advantages,
             env_infos=env_infos,
             agent_infos=agent_infos,
@@ -150,6 +154,14 @@ class SampleProcessor(object):
             logger.logkv(log_prefix + 'MaxReturn', np.max(undiscounted_returns))
             logger.logkv(log_prefix + 'MinReturn', np.min(undiscounted_returns))
 
+    def _compute_baseline_targets(self, paths):
+        # target is r_t + \gamma V_{t+1}
+        for path in paths:
+            baselines = np.append(path['baseline_values'], 0)
+            rewards = path['rewards']
+            path['baseline_targets'] = rewards + self.discount * baselines[:-1]
+        return paths
+
     def _compute_advantages(self, paths, all_path_baselines):
         assert len(paths) == len(all_path_baselines)
 
@@ -169,10 +181,11 @@ class SampleProcessor(object):
         rewards = np.concatenate([path["rewards"] for path in paths])
         dones = np.concatenate([path["dones"] for path in paths])
         returns = np.concatenate([path["returns"] for path in paths])
+        baseline_targets = np.concatenate([path["baseline_targets"] for path in paths])
         advantages = np.concatenate([path["advantages"] for path in paths])
         env_infos = utils.concat_tensor_dict_list([path["env_infos"] for path in paths])
         agent_infos = utils.concat_tensor_dict_list([path["agent_infos"] for path in paths])
-        return observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos
+        return observations, actions, rewards, dones, returns, baseline_targets, advantages, env_infos, agent_infos
 
     def _stack_path_data(self, paths):
         max_path = max([len(path['observations']) for path in paths])
@@ -182,11 +195,12 @@ class SampleProcessor(object):
         rewards = self._stack_padding(paths, 'rewards', max_path)
         dones = self._stack_padding(paths, 'dones', max_path)
         returns = self._stack_padding(paths, 'returns', max_path)
+        baseline_targets = self._stack_padding(paths, 'baseline_targets', max_path)
         advantages = self._stack_padding(paths, 'advantages', max_path)
         env_infos = utils.stack_tensor_dict_list([path["env_infos"] for path in paths], max_path)
         agent_infos = utils.stack_tensor_dict_list([path["agent_infos"] for path in paths], max_path)
 
-        return observations, actions, rewards, dones, returns, advantages, env_infos, agent_infos
+        return observations, actions, rewards, dones, returns, baseline_targets, advantages, env_infos, agent_infos
 
 
     def _stack_padding(self, paths, key, max_path):

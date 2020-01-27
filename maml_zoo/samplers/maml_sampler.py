@@ -69,7 +69,7 @@ class MAMLSampler(Sampler):
             log (boolean): whether to log sampling times
             log_prefix (str) : prefix for logger
 
-        Returns: 
+        Returns:
             (dict) : A dict of paths of size [meta_batch_size] x (batch_size) x [5] x (max_path_length)
         """
 
@@ -89,18 +89,20 @@ class MAMLSampler(Sampler):
 
         # initial reset of envs
         obses = self.vec_env.reset()
-        
+
         while n_samples < self.total_samples:
-            
+
             # execute policy
             t = time.time()
             obs_per_task = np.split(np.asarray(obses), self.meta_batch_size)
-            actions, agent_infos = policy.get_actions(obs_per_task)
+            # KATE get baseline values while we are at it
+            baseline_values, actions, agent_infos = policy.get_actions(obs_per_task)
             policy_time += time.time() - t
 
             # step environments
             t = time.time()
             actions = np.concatenate(actions) # stack meta batch
+            baseline_values = np.concatenate(baseline_values)
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
             env_time += time.time() - t
 
@@ -108,9 +110,9 @@ class MAMLSampler(Sampler):
             agent_infos, env_infos = self._handle_info_dicts(agent_infos, env_infos)
 
             new_samples = 0
-            for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
+            for idx, observation, action, reward, env_info, agent_info, done, bv in zip(itertools.count(), obses, actions,
                                                                                     rewards, env_infos, agent_infos,
-                                                                                    dones):
+                                                                                    dones, baseline_values):
                 # append new samples to running paths
                 if isinstance(reward, np.ndarray):
                     reward = reward[0]
@@ -120,6 +122,7 @@ class MAMLSampler(Sampler):
                 running_paths[idx]["dones"].append(done)
                 running_paths[idx]["env_infos"].append(env_info)
                 running_paths[idx]["agent_infos"].append(agent_info)
+                running_paths[idx]["baseline_values"].append(bv)
 
                 # if running path is done, add it to paths and empty the running path
                 if done:
@@ -130,6 +133,7 @@ class MAMLSampler(Sampler):
                         dones=np.asarray(running_paths[idx]["dones"]),
                         env_infos=utils.stack_tensor_dict_list(running_paths[idx]["env_infos"]),
                         agent_infos=utils.stack_tensor_dict_list(running_paths[idx]["agent_infos"]),
+                        baseline_values = np.asarray(running_paths[idx]["baseline_values"]),
                     ))
                     new_samples += len(running_paths[idx]["rewards"])
                     running_paths[idx] = _get_empty_running_paths_dict()
@@ -161,4 +165,4 @@ class MAMLSampler(Sampler):
 
 
 def _get_empty_running_paths_dict():
-    return dict(observations=[], actions=[], rewards=[], dones=[], env_infos=[], agent_infos=[])
+    return dict(observations=[], actions=[], rewards=[], dones=[], env_infos=[], agent_infos=[], baseline_values=[])

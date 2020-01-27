@@ -42,6 +42,7 @@ class GaussianRNNPolicy(Policy):
         self.policy_params = None
         self.obs_var = None
         self.mean_var = None
+        self.baseline_var = None
         self.log_std_var = None
         self.action_var = None
         self._dist = None
@@ -68,7 +69,7 @@ class GaussianRNNPolicy(Policy):
                                 input_dim=(None, None, self.obs_dim,),
                                 cnn_args=self.vision_args,
                                 )
-            self.obs_var, self.hidden_var, self.mean_var, self.next_hidden_var, self.cell = rnn_outs
+            self.obs_var, self.hidden_var, self.mean_var, self.baseline_var, self.next_hidden_var, self.cell = rnn_outs
 
             with tf.variable_scope("log_std_network"):
                 log_std_var = tf.get_variable(name='log_std_var',
@@ -123,7 +124,7 @@ class GaussianRNNPolicy(Policy):
             raise AssertionError
 
         sess = tf.get_default_session()
-        means, logs_stds, self._hidden_state = sess.run([self.mean_var, self.log_std_var,  self.next_hidden_var],
+        baseline_values, means, logs_stds, self._hidden_state = sess.run([self.baseline_var, self.mean_var, self.log_std_var,  self.next_hidden_var],
                                                      feed_dict={self.obs_var: observations,
                                                                 self.hidden_var: self._hidden_state})
 
@@ -135,7 +136,8 @@ class GaussianRNNPolicy(Policy):
         logs_stds = logs_stds[0, :]
         assert actions.shape == (observations.shape[0], 1, self.action_dim)
         agent_infos = [[dict(mean=mean, log_std=logs_stds)] for mean in means]
-        return actions, agent_infos
+        # KATE want baseline values too, from same net
+        return baseline_values, actions, agent_infos
 
     def log_diagnostics(self, paths, prefix=''):
         """
@@ -183,10 +185,12 @@ class GaussianRNNPolicy(Policy):
                                   cell_type=self._cell_type,
                                   cnn_args=self.vision_args,
                                   )
-            obs_var, hidden_var, mean_var, next_hidden_var, cell = rnn_outs
+            # KATE get baseline var again here, this time for training
+            # TODO why do we create the graph twice? think it is not needed for RL2 at least
+            obs_var, hidden_var, mean_var, baseline_var, next_hidden_var, cell = rnn_outs
             log_std_var = self.log_std_var
 
-        return dict(mean=mean_var, log_std=log_std_var), hidden_var, next_hidden_var
+        return dict(mean=mean_var, log_std=log_std_var), baseline_var, hidden_var, next_hidden_var
 
     def distribution_info_keys(self, obs, state_infos):
         """

@@ -88,6 +88,11 @@ class Algo(object):
         adv_ph = tf.placeholder(dtype=tf.float32, shape=adv_shape, name=prefix + '_advantage')
         all_phs_dict['%s_%s' % (prefix, 'advantages')] = adv_ph
 
+        # baseline target ph
+        baseline_target_shape = [None] if not recurrent else [None, None]
+        baseline_target_ph = tf.placeholder(dtype=tf.float32, shape=baseline_target_shape, name=prefix + '_baseline_target')
+        all_phs_dict['%s_%s' % (prefix, 'baseline_targets')] = baseline_target_ph
+
         # distribution / agent info
         dist_info_ph_dict = {}
         for info_key, shape in dist_info_specs:
@@ -96,7 +101,7 @@ class Algo(object):
             all_phs_dict['%s_agent_infos/%s' % (prefix, info_key)] = ph
             dist_info_ph_dict[info_key] = ph
 
-        return obs_ph, action_ph, adv_ph, dist_info_ph_dict, all_phs_dict
+        return obs_ph, action_ph, adv_ph, baseline_target_ph, dist_info_ph_dict, all_phs_dict
 
     def _extract_input_dict(self, samples_data, keys, prefix=''):
         """
