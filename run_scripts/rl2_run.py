@@ -5,6 +5,7 @@ import numpy as np
 
 from maml_zoo.baselines.linear_baseline import LinearFeatureBaseline
 from maml_zoo.envs.sawyer_envs.reacher.sawyer_reacher import SawyerReachingEnvMultitask, SawyerReachingEnvMultitaskVision
+from maml_zoo.envs.half_cheetah_rand_direc import HalfCheetahRandDirecEnv
 from maml_zoo.envs.rl2_env import rl2env
 from maml_zoo.algos.vpg import VPG
 from maml_zoo.algos.ppo import PPO
@@ -21,10 +22,10 @@ def run_experiment(config):
     if config['obs_mode'] == 'image':
         env = rl2env(SawyerReachingEnvMultitaskVision())
     else:
-        env = rl2env(SawyerReachingEnvMultitask())
+        #env = rl2env(SawyerReachingEnvMultitask())
+        env = rl2env(HalfCheetahRandDirecEnv())
     # obs is state, action, reward, and done
     obs_dim = np.prod(env.observation_space.shape) + np.prod(env.action_space.shape) + 1 + 1
-    print('SCRIPT: obs dim', obs_dim)
     vision_args = None
     if config['obs_mode'] == 'image':
         vision_args = dict(base_depth=32, double_camera=config['double_camera'])
@@ -60,7 +61,9 @@ def run_experiment(config):
     algo = PPO(
         policy=policy,
         learning_rate=config['learning_rate'],
-        max_epochs=config['max_epochs']
+        max_epochs=config['max_epochs'],
+        max_baseline_epochs=config['max_baseline_epochs'],
+        baseline_mult=config['baseline_loss_mult']
     )
 
     trainer = Trainer(
@@ -85,7 +88,7 @@ def main(config, log_dir, debug):
         data_path = maml_zoo_path + '{}/test_{}'.format(log_dir, idx)
     logger.configure(dir=data_path, format_strs=['stdout', 'log', 'csv'],
                      snapshot_mode='last_gap')
-    config = json.load(open(maml_zoo_path + "/configs/{}".format(config), 'r'))
+    config = json.load(open(maml_zoo_path + "/{}".format(config), 'r'))
     json.dump(config, open(data_path + '/params.json', 'w'))
     run_experiment(config)
 

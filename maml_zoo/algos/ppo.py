@@ -29,6 +29,8 @@ class PPO(Algo):
             learning_rate=1e-3,
             clip_eps=0.2,
             max_epochs=5,
+            max_baseline_epochs=50,
+            baseline_mult=.1,
             **kwargs
             ):
         super(PPO, self).__init__(*args, **kwargs)
@@ -36,13 +38,13 @@ class PPO(Algo):
         self.recurrent = getattr(self.policy, 'recurrent', False)
         if self.recurrent:
             self.policy_optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
-            # TODO don't hard code this
-            self.baseline_optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs*5)
+            self.baseline_optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_baseline_epochs)
         else:
             self.optimizer = MAMLFirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
         self._optimization_keys = ['observations', 'actions', 'advantages', 'baseline_targets', 'agent_infos']
         self.name = name
         self._clip_eps = clip_eps
+        self.baseline_mult = baseline_mult
 
         self.build_graph()
 
@@ -90,9 +92,7 @@ class PPO(Algo):
         # KATE add loss for baseline training
         print('baseline pred shape', self.policy.baseline_var.shape)
         print('baseline target shape', baseline_target_ph.shape)
-        # TODO don't hard code this multiplier
-        baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph) * .1
-        #total_obj = surr_obj + baseline_obj
+        baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph) * self.baseline_mult
 
         self.policy_optimizer.build_graph(
             loss=surr_obj,
@@ -102,7 +102,7 @@ class PPO(Algo):
             next_hidden_var=next_hidden_var
         )
         self.baseline_optimizer.build_graph(
-            loss=baseline_obj + 0 * surr_obj,
+            loss=baseline_obj + 0 * surr_obj, # TODO HACK!!! otherwise some part of the graph is disconnected
             target=self.policy,
             input_ph_dict=self.meta_op_phs_dict,
             hidden_ph=hidden_ph,
