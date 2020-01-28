@@ -1,0 +1,26 @@
+<mujocoinclude>
+
+    <option gravity="0 0 0" />
+    <visual>
+        <headlight ambient="0.5 0.5 0.5"  />
+    </visual>
+
+    <compiler inertiafromgeom="auto" angle="radian" coordinate="local" eulerseq="XYZ"/>
+    <size njmax="6000" nconmax="6000"/>
+
+    <option timestep='0.0025' iterations="50" tolerance="1e-10" solver="Newton" jacobian="dense" cone="elliptic"/>
+
+    <!-- defaults -->
+    <default>
+        <joint limited="true"
+               damping="10"
+               frictionloss="0.001"
+               margin="0.01"
+               armature=".1"
+               user="0"/>
+        <geom solref="0.02 1" solimp="1 1 0"/>
+        <motor ctrllimited="true" ctrlrange="-1 1"/>
+        <general ctrllimited="true" ctrlrange="-1 1" dyntype="none" gaintype="fixed"/>
+    </default>
+
+</mujocoinclude>

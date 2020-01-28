@@ -1,0 +1,31 @@
+<mujoco>
+
+    <include file="include/assets.xml"/>
+    
+    <option timestep='0.0025'/>
+
+    <worldbody>
+
+        <camera name="track" pos="0 0 5" mode="fixed" euler="0 0 0"/>
+
+        <!-- lighting of the scene -->
+        <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+
+        <!-- dummy -->
+        <body name="dummy" pos="-10 -10 -10">
+            <geom size="0.1 0.1 0.1" type="box" rgba="0.2 0.2 0.2 1" contype="0" conaffinity="0"/>
+            <joint name="dummy_joint" pos="0 0 0" axis="0 0 1" limited="true" range="-0.2 0.2"/>
+        </body>
+
+        <!-- pointmass -->
+        <site name="point" pos="0.01 0.01 0" size="0.3" rgba="1 0 0 1"/>
+
+        <!-- goal site -->
+        <!-- boundaries that can be seen by the camera: left x=-2 top y=+2 -->
+        <site name="goal_reach_site" pos="-1 1 0" size="0.05" rgba="0 1 0 0"/>
+
+    </worldbody>
+
+    <include file="include/actuators.xml"/>
+
+</mujoco>

@@ -1,0 +1,7 @@
+<mujocoinclude>
+    <!-- position control -->
+    <actuator>
+        <position name="j0" joint="dummy_joint" forcerange="-1 1" ctrlrange="-0.1 0.1" kp="1"/>  
+    </actuator>
+
+</mujocoinclude>
