@@ -75,7 +75,7 @@ def run_experiment(config):
 
 @click.command()
 @click.argument('config', default='rl2_config.json')
-@click.option('--log_dir', default='./data/rl2')
+@click.option('--log_dir', default='/data/rl2')
 @click.option('--debug', is_flag=True, default=False)
 def main(config, log_dir, debug):
     idx = np.random.randint(0, 1000)
