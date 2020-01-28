@@ -258,15 +258,42 @@ def create_rnn(name,
                                         time_major=False,
                                         )
 
+        div = hidden_size // 2
+        b_out = outputs[..., :div]
+        p_out = outputs[..., div:]
         # pass through the final fully connected output layer
-        # this will be both policy mean and baseline value!
-        output_var = tf.layers.dense(outputs,
-                                     output_dim,
+        b_out= tf.layers.dense(b_out,
+                                     256,
+                                     name='b_dense1',
+                                     activation=hidden_nonlinearity,
+                                     kernel_initializer=w_init,
+                                     bias_initializer=b_init,
+                                     )
+        # baseline value, scalar
+        b_out = tf.layers.dense(b_out,
+                                     1,
+                                     name='baseline_output',
+                                     activation=output_nonlinearity,
+                                     kernel_initializer=w_init,
+                                     bias_initializer=b_init,
+                                     )
+        # pass through the final fully connected output layer
+        p_out = tf.layers.dense(p_out,
+                                     256,
+                                     name='p_dense1',
+                                     activation=hidden_nonlinearity,
+                                     kernel_initializer=w_init,
+                                     bias_initializer=b_init,
+                                     )
+        # policy value, action dim
+        p_out = tf.layers.dense(p_out,
+                                     output_dim -1,
                                      name='policy_output',
                                      activation=output_nonlinearity,
                                      kernel_initializer=w_init,
                                      bias_initializer=b_init,
                                      )
+        output_var = tf.concat((p_out, b_out), axis=-1)
 
     return input_var, state_var, output_var, next_state_var, cell
 
