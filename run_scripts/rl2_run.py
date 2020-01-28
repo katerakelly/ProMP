@@ -4,7 +4,9 @@ import json
 import numpy as np
 
 from maml_zoo.baselines.linear_baseline import LinearFeatureBaseline
+from maml_zoo.envs.sawyer_envs.pointmass.pointmass_env import PointMassEnvMultitask, PointMassEnvMultitaskVision
 from maml_zoo.envs.sawyer_envs.reacher.sawyer_reacher import SawyerReachingEnvMultitask, SawyerReachingEnvMultitaskVision
+#from maml_zoo.envs.sawyer_envs.peg.sawyer_peg import SawyerPegInsertionEnvMultitask, SawyerPegInsertionEnvMultitaskVision
 from maml_zoo.envs.half_cheetah_rand_direc import HalfCheetahRandDirecEnv
 from maml_zoo.envs.rl2_env import rl2env
 from maml_zoo.algos.vpg import VPG
@@ -17,13 +19,13 @@ from maml_zoo.policies.gaussian_rnn_policy import GaussianRNNPolicy
 from maml_zoo.logger import logger
 maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[:-1])
 
+exp_dict = {'cheetah-dir':HalfCheetahRandDirecEnv, \
+        'pointmass':PointMassEnvMultitask, \
+        'reacher':SawyerReachingEnvMultitask}
+
 def run_experiment(config):
     baseline = LinearFeatureBaseline() # KATE note this is no longer used!
-    if config['obs_mode'] == 'image':
-        env = rl2env(SawyerReachingEnvMultitaskVision())
-    else:
-        #env = rl2env(SawyerReachingEnvMultitask())
-        env = rl2env(HalfCheetahRandDirecEnv())
+    env = rl2env(exp_dict[config['env']]())
     # obs is state, action, reward, and done
     obs_dim = np.prod(env.observation_space.shape) + np.prod(env.action_space.shape) + 1 + 1
     vision_args = None
@@ -78,17 +80,17 @@ def run_experiment(config):
 
 @click.command()
 @click.argument('config', default='rl2_config.json')
-@click.option('--log_dir', default='/data/rl2')
+@click.option('--log_dir', default='/root/code/data/rl2')
 @click.option('--debug', is_flag=True, default=False)
 def main(config, log_dir, debug):
     idx = np.random.randint(0, 1000)
     if debug:
-        data_path = maml_zoo_path + '{}/debug'.format(log_dir)
+        data_path = '{}/debug'.format(log_dir)
     else:
-        data_path = maml_zoo_path + '{}/test_{}'.format(log_dir, idx)
+        data_path = '{}/test_{}'.format(log_dir, idx)
     logger.configure(dir=data_path, format_strs=['stdout', 'log', 'csv'],
                      snapshot_mode='last_gap')
-    config = json.load(open(maml_zoo_path + "/{}".format(config), 'r'))
+    config = json.load(open(config, 'r'))
     json.dump(config, open(data_path + '/params.json', 'w'))
     run_experiment(config)
 
