@@ -43,14 +43,13 @@ class RL2FirstOrderOptimizer(Optimizer):
         self._verbose = verbose
         self._all_inputs = None
         self._train_op = None
-        self._policy_loss = None
-        self._baseline_loss = None
+        self._loss = None
         self._next_hidden_var = None
         self._hidden_ph = None
         self._input_ph_dict = None
         self._backprop_steps = backprop_steps
 
-    def build_graph(self, policy_loss, baseline_loss, target, input_ph_dict, hidden_ph, next_hidden_var):
+    def build_graph(self, loss, target, input_ph_dict, hidden_ph, next_hidden_var):
         """
         Sets the objective function and target weights for the optimize function
 
@@ -59,19 +58,17 @@ class RL2FirstOrderOptimizer(Optimizer):
             target (Policy) : Policy whose values we are optimizing over
             input_ph_dict (dict) : dict containing the placeholders of the computation graph corresponding to loss
         """
-        assert isinstance(policy_loss, tf.Tensor)
-        assert isinstance(baseline_loss, tf.Tensor)
+        assert isinstance(loss, tf.Tensor)
         assert hasattr(target, 'get_params')
         assert isinstance(input_ph_dict, dict)
 
         self._target = target
         self._input_ph_dict = input_ph_dict
-        self._policy_loss = policy_loss
-        self._baseline_loss = baseline_loss
+        self._loss = loss
         self._hidden_ph = hidden_ph
         self._next_hidden_var = next_hidden_var
         params = list(target.get_params().values())
-        self._gradients_var = tf.gradients(policy_loss + baseline_loss, params)
+        self._gradients_var = tf.gradients(loss, params)
         self._gradients_ph = [tf.placeholder(shape=param.shape, dtype=tf.float32) for param in params]
         applied_gradients = zip(self._gradients_ph, params)
         self._train_op = self._tf_optimizer.apply_gradients(applied_gradients)
@@ -92,8 +89,8 @@ class RL2FirstOrderOptimizer(Optimizer):
         batch_size, seq_len, *_ = list(input_val_dict.values())[0].shape
         hidden_batch = self._target.get_zero_state(batch_size)
         feed_dict[self._hidden_ph] = hidden_batch
-        policy_loss, baseline_loss = sess.run([self._policy_loss, self._baseline_loss], feed_dict=feed_dict)
-        return policy_loss, baseline_loss
+        loss= sess.run(self._loss, feed_dict=feed_dict)
+        return loss
 
     def optimize(self, input_val_dict):
         """
@@ -110,15 +107,13 @@ class RL2FirstOrderOptimizer(Optimizer):
         sess = tf.get_default_session()
         batch_size, seq_len, *_ = list(input_val_dict.values())[0].shape
 
-        policy_loss_before_opt = None
-        baseline_loss_before_opt = None
+        loss_before_opt = None
         for epoch in range(self._max_epochs):
             hidden_batch = self._target.get_zero_state(batch_size)
             if self._verbose:
                 logger.log("Epoch %d" % epoch)
             # run train op
-            policy_loss = []
-            baseline_loss = []
+            loss = []
             all_grads = []
 
             for i in range(0, seq_len, self._backprop_steps):
@@ -127,18 +122,16 @@ class RL2FirstOrderOptimizer(Optimizer):
                 feed_dict = dict([(self._input_ph_dict[key], input_val_dict[key][:, i:n_i]) for key in
                                   self._input_ph_dict.keys()])
                 feed_dict[self._hidden_ph] = hidden_batch
-                policy_batch_loss, baseline_batch_loss, grads, hidden_batch = sess.run([self._policy_loss, self._baseline_loss, self._gradients_var, self._next_hidden_var],
+                batch_loss, grads, hidden_batch = sess.run([self._loss, self._gradients_var, self._next_hidden_var],
                                                             feed_dict=feed_dict)
-                policy_loss.append(policy_batch_loss)
-                baseline_loss.append(baseline_batch_loss)
+                loss.append(batch_loss)
                 all_grads.append(grads)
 
             grads = [np.mean(grad, axis=0) for grad in zip(*all_grads)]
             feed_dict = dict(zip(self._gradients_ph, grads))
             _ = sess.run(self._train_op, feed_dict=feed_dict)
 
-            if not policy_loss_before_opt: policy_loss_before_opt = np.mean(policy_loss)
-            if not baseline_loss_before_opt: baseline_loss_before_opt = np.mean(baseline_loss)
+            if not loss_before_opt: loss_before_opt = np.mean(loss)
 
             # if self._verbose:
             #     logger.log("Epoch: %d | Loss: %f" % (epoch, new_loss))
@@ -146,7 +139,7 @@ class RL2FirstOrderOptimizer(Optimizer):
             # if abs(last_loss - new_loss) < self._tolerance:
             #     break
             # last_loss = new_loss
-        return policy_loss_before_opt, baseline_loss_before_opt
+        return loss_before_opt
 
 
 class RL2PPOOptimizer(RL2FirstOrderOptimizer):

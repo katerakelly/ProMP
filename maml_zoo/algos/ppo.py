@@ -35,7 +35,9 @@ class PPO(Algo):
 
         self.recurrent = getattr(self.policy, 'recurrent', False)
         if self.recurrent:
-            self.optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
+            self.policy_optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
+            # TODO don't hard code this
+            self.baseline_optimizer = RL2FirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs*5)
         else:
             self.optimizer = MAMLFirstOrderOptimizer(learning_rate=learning_rate, max_epochs=max_epochs)
         self._optimization_keys = ['observations', 'actions', 'advantages', 'baseline_targets', 'agent_infos']
@@ -90,10 +92,17 @@ class PPO(Algo):
         print('baseline target shape', baseline_target_ph.shape)
         # TODO don't hard code this multiplier
         baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph) * .1
+        #total_obj = surr_obj + baseline_obj
 
-        self.optimizer.build_graph(
-            policy_loss=surr_obj,
-            baseline_loss=baseline_obj,
+        self.policy_optimizer.build_graph(
+            loss=surr_obj,
+            target=self.policy,
+            input_ph_dict=self.meta_op_phs_dict,
+            hidden_ph=hidden_ph,
+            next_hidden_var=next_hidden_var
+        )
+        self.baseline_optimizer.build_graph(
+            loss=baseline_obj + 0 * surr_obj,
             target=self.policy,
             input_ph_dict=self.meta_op_phs_dict,
             hidden_ph=hidden_ph,
@@ -115,10 +124,16 @@ class PPO(Algo):
         input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
 
         if log: logger.log("Optimizing")
-        policy_loss_before, baseline_loss_before = self.optimizer.optimize(input_val_dict=input_dict)
+        baseline_loss_before = self.baseline_optimizer.optimize(input_val_dict=input_dict)
 
         if log: logger.log("Computing statistics")
-        policy_loss_after, baseline_loss_after = self.optimizer.loss(input_val_dict=input_dict)
+        baseline_loss_after = self.baseline_optimizer.loss(input_val_dict=input_dict)
+
+        if log: logger.log("Optimizing")
+        policy_loss_before = self.policy_optimizer.optimize(input_val_dict=input_dict)
+
+        if log: logger.log("Computing statistics")
+        policy_loss_after = self.policy_optimizer.loss(input_val_dict=input_dict)
 
         if log:
             logger.logkv('PolicyLossBefore', policy_loss_before)

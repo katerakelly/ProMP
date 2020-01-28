@@ -259,21 +259,14 @@ def create_rnn(name,
                                         )
 
         # pass through the final fully connected output layer
-        policy_output_var = tf.layers.dense(outputs,
+        # this will be both policy mean and baseline value!
+        output_var = tf.layers.dense(outputs,
                                      output_dim,
                                      name='policy_output',
                                      activation=output_nonlinearity,
                                      kernel_initializer=w_init,
                                      bias_initializer=b_init,
                                      )
-        # baseline should be batch X 1
-        baseline_output_var = tf.layers.dense(outputs,
-                                     1,
-                                     name='baseline_output',
-                                     activation=output_nonlinearity,
-                                     kernel_initializer=w_init,
-                                     bias_initializer=b_init,
-                                     )
 
-    return input_var, state_var, policy_output_var, baseline_output_var, next_state_var, cell
+    return input_var, state_var, output_var, next_state_var, cell
 

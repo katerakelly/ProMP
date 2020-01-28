@@ -60,16 +60,19 @@ class GaussianRNNPolicy(Policy):
         """
         with tf.variable_scope(self.name):
             # build the actual policy network
+            # KATE predict baseline alongsize policy mean
             rnn_outs = create_rnn(name='mean_network',
                                 cell_type=self._cell_type,
-                                output_dim=self.action_dim,
+                                output_dim=self.action_dim + 1, # extra dim for baseline
                                 hidden_sizes=self.hidden_sizes,
                                 hidden_nonlinearity=self.hidden_nonlinearity,
                                 output_nonlinearity=self.output_nonlinearity,
                                 input_dim=(None, None, self.obs_dim,),
                                 cnn_args=self.vision_args,
                                 )
-            self.obs_var, self.hidden_var, self.mean_var, self.baseline_var, self.next_hidden_var, self.cell = rnn_outs
+            self.obs_var, self.hidden_var, rnn_output_var, self.next_hidden_var, self.cell = rnn_outs
+            self.mean_var = rnn_output_var[..., :-1]
+            self.baseline_var = rnn_output_var[..., -1:]
 
             with tf.variable_scope("log_std_network"):
                 log_std_var = tf.get_variable(name='log_std_var',
@@ -177,7 +180,7 @@ class GaussianRNNPolicy(Policy):
         assert params is None
         with tf.variable_scope(self.name, reuse=True):
             rnn_outs = create_rnn(name="mean_network",
-                                  output_dim=self.action_dim,
+                                  output_dim=self.action_dim + 1, # extra dim for baseline
                                   hidden_sizes=self.hidden_sizes,
                                   hidden_nonlinearity=self.hidden_nonlinearity,
                                   output_nonlinearity=self.output_nonlinearity,
@@ -187,7 +190,9 @@ class GaussianRNNPolicy(Policy):
                                   )
             # KATE get baseline var again here, this time for training
             # TODO why do we create the graph twice? think it is not needed for RL2 at least
-            obs_var, hidden_var, mean_var, baseline_var, next_hidden_var, cell = rnn_outs
+            obs_var, hidden_var, rnn_output_var, next_hidden_var, cell = rnn_outs
+            mean_var = rnn_output_var[..., :-1]
+            baseline_var = rnn_output_var[..., -1:]
             log_std_var = self.log_std_var
 
         return dict(mean=mean_var, log_std=log_std_var), baseline_var, hidden_var, next_hidden_var
