@@ -88,11 +88,12 @@ class PPO(Algo):
         # KATE add loss for baseline training
         print('baseline pred shape', self.policy.baseline_var.shape)
         print('baseline target shape', baseline_target_ph.shape)
-        baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph)
-        total_obj = surr_obj + baseline_obj
+        # TODO don't hard code this multiplier
+        baseline_obj = tf.losses.mean_squared_error(tf.squeeze(baseline_pred_ph), baseline_target_ph) * .1
 
         self.optimizer.build_graph(
-            loss=total_obj,
+            policy_loss=surr_obj,
+            baseline_loss=baseline_obj,
             target=self.policy,
             input_ph_dict=self.meta_op_phs_dict,
             hidden_ph=hidden_ph,
@@ -114,11 +115,13 @@ class PPO(Algo):
         input_dict = self._extract_input_dict(samples_data, self._optimization_keys, prefix='train')
 
         if log: logger.log("Optimizing")
-        loss_before = self.optimizer.optimize(input_val_dict=input_dict)
+        policy_loss_before, baseline_loss_before = self.optimizer.optimize(input_val_dict=input_dict)
 
         if log: logger.log("Computing statistics")
-        loss_after = self.optimizer.loss(input_val_dict=input_dict)
+        policy_loss_after, baseline_loss_after = self.optimizer.loss(input_val_dict=input_dict)
 
         if log:
-            logger.logkv('LossBefore', loss_before)
-            logger.logkv('LossAfter', loss_after)
+            logger.logkv('PolicyLossBefore', policy_loss_before)
+            logger.logkv('PolicyLossAfter', policy_loss_after)
+            logger.logkv('BaselineLossBefore', baseline_loss_before)
+            logger.logkv('BaselineLossAfter', baseline_loss_after)
