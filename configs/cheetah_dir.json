@@ -1,5 +1,6 @@
 {
   "algo": "RL2",
+  "env": "cheetah-dir",
   "obs_mode": "state",
   "meta_batch_size": 200,
   "hidden_sizes": [
@@ -15,7 +16,7 @@
   "learning_rate": 1e-3,
   "max_epochs": 5,
   "max_baseline_epochs": 50,
-  "baseline_mult": 0.1,
+  "baseline_loss_mult": 0.1,
   "cell_type": "lstm",
   "num_minibatches": 1,
   "n_itr": 1000
