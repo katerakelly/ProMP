@@ -6,6 +6,7 @@ import gym
 from gym.envs.mujoco import mujoco_env
 import os
 
+from maml_zoo.logger import logger
 SCRIPT_DIR = os.path.dirname(__file__)
 
 ##################################################################
@@ -34,7 +35,6 @@ class PointMassEnv(mujoco_env.MujocoEnv, gym.utils.EzPickle):
         self.body_id_ee = 0
         self.site_id_ee = 0
         self.site_id_goal = 0
-        self.is_eval_env = False
         self.init_qpos = np.array([0,0,0]) #xyz position of pointmass
 
         # Sparse reward setting
@@ -94,9 +94,11 @@ class PointMassEnv(mujoco_env.MujocoEnv, gym.utils.EzPickle):
         )
         return np.flipud(im) # make the image right side up
 
-    def get_obs(self):
+    def get_obs(self, obs_mode=None):
         # xy position of pointmass site in the world frame
-        if self.obs_mode == 'image':
+        if obs_mode is None:
+            obs_mode = self.obs_mode
+        if obs_mode == 'image':
             img = self.get_image()
             return (img.astype(np.float32) / 255.).flatten()
         else:
@@ -123,7 +125,7 @@ class PointMassEnv(mujoco_env.MujocoEnv, gym.utils.EzPickle):
 
     def do_step(self, action):
 
-        curr_position = self.get_obs().copy()
+        curr_position = self.get_obs(obs_mode='state').copy()
 
         if self.startup:
             feasible_desired_position = 0*action
@@ -269,7 +271,7 @@ class PointMassEnvMultitask(PointMassEnv):
         super(PointMassEnvMultitask, self).__init__(xml_path=xml_path, goal_site_name=goal_site_name, sparse_reward=sparse_reward, action_mode=action_mode, obs_mode=obs_mode)
 
     def get_obs_dim(self):
-        return len(self.get_obs()) + 2 # the additional dims for reward and sparse reward
+        return len(self.get_obs())
 
     def step(self, action):
 
@@ -288,9 +290,6 @@ class PointMassEnvMultitask(PointMassEnv):
         self.sim.reset()
         ob = self.reset_model()
 
-        # concatenate a dummy rew=0 to the obs
-        ob = np.concatenate((ob, np.array([0]), np.array([0])))
-
         # print("        env has been reset... task is ", self.model.site_pos[self.site_id_goal])
         return ob
 
@@ -306,16 +305,13 @@ class PointMassEnvMultitask(PointMassEnv):
         and get the possible task list accordingly
         '''
 
-        if is_eval_env:
-            np.random.seed(100) #pick eval tasks as random from diff seed
-        else:
-            np.random.seed(101)
+        np.random.seed(101)
+        num_tasks = 1 # TODO HACKKK!
 
         ##### ONLY 1 OPTIONS
         if num_tasks==1:
             possible_goals=[]
             possible_goals.append(self.goal_options[0])
-            return possible_goals
 
         ##### ONLY 4 OPTIONS
         elif num_tasks==4:
@@ -324,14 +320,12 @@ class PointMassEnvMultitask(PointMassEnv):
             possible_goals.append(np.array([1, 1, 0]))
             possible_goals.append(np.array([-1, -1, 0]))
             possible_goals.append(np.array([1, -1, 0]))
-            return possible_goals
 
         ##### ONLY 2 OPTIONS
         elif num_tasks==2:
             possible_goals=[]
             possible_goals.append(self.goal_options[0])
             possible_goals.append(self.goal_options[1])
-            return possible_goals
 
         ###### MANY OPTIONS
         else:
@@ -340,7 +334,8 @@ class PointMassEnvMultitask(PointMassEnv):
                 x = np.random.uniform(self.limits_lows_joint_pos[0], self.limits_highs_joint_pos[0])
                 y = np.random.uniform(self.limits_lows_joint_pos[1], self.limits_highs_joint_pos[1])
                 possible_goals.append(np.array([x,y,0]))
-            return possible_goals
+        indices = np.random.choice(list(range(len(possible_goals))), num_tasks)
+        return [possible_goals[idx] for idx in indices]
 
     def set_task(self, goal):
 
@@ -366,9 +361,9 @@ class PointMassEnvMultitask(PointMassEnv):
 
 
 class PointMassEnvMultitaskVision(PointMassEnvMultitask):
-
     '''
+    stub class to control observation mode
     point mass navigation from images
     '''
     def __init__(self, *args, **kwargs):
-        super(POintMassEnvMultitaskVision, self).__init(*args, obs_mode='image', **kwargs)
+        super(PointMassEnvMultitaskVision, self).__init__(*args, obs_mode='image', **kwargs)
