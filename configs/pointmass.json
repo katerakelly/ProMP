@@ -1,8 +1,8 @@
 {
   "algo": "RL2",
-  "env": "reacher",
-  "obs_mode": "state",
-  "meta_batch_size": 160,
+  "env": "pointmass",
+  "obs_mode": "image",
+  "meta_batch_size": 80,
   "hidden_sizes": [
     64
   ],
@@ -15,8 +15,9 @@
   "positive_adv": false,
   "learning_rate": 1e-3,
   "max_epochs": 5,
-  "max_baseline_epochs": 50,
-  "baseline_loss_mult": 0.1,
+  "max_baseline_epochs": 100,
+  "baseline_loss_mult": 2.0,
+  "double_camera":false,
   "cell_type": "lstm",
   "num_minibatches": 1,
   "n_itr": 1000

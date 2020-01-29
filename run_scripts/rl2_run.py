@@ -21,11 +21,16 @@ maml_zoo_path = '/'.join(os.path.realpath(os.path.dirname(__file__)).split('/')[
 
 exp_dict = {'cheetah-dir':HalfCheetahRandDirecEnv, \
         'pointmass':PointMassEnvMultitask, \
-        'reacher':SawyerReachingEnvMultitask}
+        'pointmass-vis': PointMassEnvMultitaskVision, \
+        'reacher':SawyerReachingEnvMultitask,\
+        'reacher-vis': SawyerReachingEnvMultitaskVision}
 
 def run_experiment(config):
     baseline = LinearFeatureBaseline() # KATE note this is no longer used!
-    env = rl2env(exp_dict[config['env']]())
+    env_name = config['env']
+    if config['obs_mode'] == 'image':
+        env_name = env_name + '-vis'
+    env = rl2env(exp_dict[env_name]())
     # obs is state, action, reward, and done
     obs_dim = np.prod(env.observation_space.shape) + np.prod(env.action_space.shape) + 1 + 1
     vision_args = None
