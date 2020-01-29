@@ -297,7 +297,7 @@ class PointMassEnvMultitask(PointMassEnv):
     ### These are called externally
     ##########################################
 
-    def sample_tasks(self, num_tasks):
+    def sample_tasks(self, num_meta_batch):
 
         '''
         Call this function externally, ONCE
@@ -334,7 +334,7 @@ class PointMassEnvMultitask(PointMassEnv):
                 x = np.random.uniform(self.limits_lows_joint_pos[0], self.limits_highs_joint_pos[0])
                 y = np.random.uniform(self.limits_lows_joint_pos[1], self.limits_highs_joint_pos[1])
                 possible_goals.append(np.array([x,y,0]))
-        indices = np.random.choice(list(range(len(possible_goals))), num_tasks)
+        indices = np.random.choice(list(range(len(possible_goals))), num_meta_batch)
         return [possible_goals[idx] for idx in indices]
 
     def set_task(self, goal):
