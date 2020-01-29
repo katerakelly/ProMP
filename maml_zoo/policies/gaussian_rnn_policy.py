@@ -147,7 +147,9 @@ class GaussianRNNPolicy(Policy):
         Log extra information per iteration based on the collected paths
         """
         log_stds = np.vstack([path["agent_infos"]["log_std"] for path in paths])
+        means = np.vstack([path["agent_infos"]["mean"] for path in paths])
         logger.logkv(prefix+'AveragePolicyStd', np.mean(np.exp(log_stds)))
+        logger.logkv(prefix+'AveragePolicyMean', np.mean(np.abs(means)))
 
     def load_params(self, policy_params):
         """
