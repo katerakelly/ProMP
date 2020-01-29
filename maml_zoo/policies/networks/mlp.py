@@ -177,8 +177,8 @@ def create_rnn(name,
             kernel_sizes = [5, 3, 3, 3]
             if not cnn_args['double_camera']:
                 for f, k in zip(filter_mults, kernel_sizes):
-                    conv_layers.append(tf.keras.layers.Conv2D(f * base_depth, k, 2, padding="SAME", activation=tf.nn.leaky_relu)) # number of output filters, kernel size, stride
-                conv_layers.append(tf.keras.layers.Conv2D(8 * base_depth, 4, padding="VALID", activation=tf.nn.leaky_relu))
+                    conv_layers.append(tf.layers.Conv2D(f * base_depth, k, 2, padding="SAME", activation=tf.nn.leaky_relu)) # number of output filters, kernel size, stride
+                conv_layers.append(tf.layers.Conv2D(8 * base_depth, 4, padding="VALID", activation=tf.nn.leaky_relu))
             '''
             else:
                 self.conv1 = conv(base_depth, (10, 5), 2)  # conv: filters, kernel_size, stride
@@ -216,20 +216,23 @@ def create_rnn(name,
         ###############################
 
         if build_cnn:
+            b, t = tf.shape(input_var)[0], tf.shape(input_var)[1]
             image_shape = 64*64*3 # TODO
             output_feat_dim = 256
             print('ORIG input var', input_var.shape)
             # reshape the image part of the input vector into a 4-D tensor
             cnn_input_var = input_var[..., :image_shape]
-            cnn_input_var = tf.reshape(cnn_input_var, (-1, 64, 64, 3)) # batch x h x w x c
             rest_input_var = input_var[..., image_shape:]
+
+            cnn_input_var = tf.reshape(cnn_input_var, (-1, 64, 64, 3)) # batch x h x w x c
+
             print('CNN input var', cnn_input_var.shape)
             # pass the input var through the conv layers
             for layer in conv_layers:
                 cnn_input_var = layer(cnn_input_var)
 
             # flatten resulting conv features
-            flat_shape = (tf.shape(rest_input_var)[0], tf.shape(rest_input_var)[1], output_feat_dim)
+            flat_shape = (b, t, output_feat_dim)
             cnn_input_var = tf.reshape(cnn_input_var, flat_shape)  # batch x feature
             print('rest input var', rest_input_var.shape)
             print('CNN output', cnn_input_var.shape)
